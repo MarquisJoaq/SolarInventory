@@ -1,0 +1,1687 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>JPMC & Bright Horizon - Live Storage & Inventory Hub</title>
+  
+  <!-- Tailwind CSS CDN -->
+  <script src="https://cdn.tailwindcss.com"></script>
+  <script>
+    tailwind.config = {
+      darkMode: 'class',
+      theme: {
+        extend: {
+          colors: {
+            jpmc: {
+              navy: '#0b2240',
+              blue: '#143159',
+              gold: '#e0a32e',
+              light: '#f4f6f9'
+            },
+            bh: {
+              amber: '#f59e0b',
+              green: '#22c55e',
+              dark: '#0f172a'
+            }
+          }
+        }
+      }
+    }
+  </script>
+
+  <!-- Google Fonts -->
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+
+  <!-- React & ReactDOM v18 CDNs -->
+  <script src="https://unpkg.com/react@18/umd/react.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/react-dom@18/umd/react-dom.production.min.js" crossorigin></script>
+  <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
+
+  <style>
+    body {
+      font-family: 'Plus Jakarta Sans', sans-serif;
+    }
+    .font-logo {
+      font-family: 'Space Grotesk', sans-serif;
+    }
+    /* Custom clean scrollbar */
+    ::-webkit-scrollbar {
+      width: 6px;
+      height: 6px;
+    }
+    ::-webkit-scrollbar-track {
+      background: rgba(15, 23, 42, 0.6);
+    }
+    ::-webkit-scrollbar-thumb {
+      background: rgba(148, 163, 184, 0.3);
+      border-radius: 4px;
+    }
+    ::-webkit-scrollbar-thumb:hover {
+      background: rgba(148, 163, 184, 0.5);
+    }
+  </style>
+</head>
+<body class="bg-slate-950 text-slate-100 min-h-screen">
+
+  <div id="root"></div>
+
+  <!-- React & Babel Logic -->
+  <script type="text/babel" data-type="module">
+    // Import official Firebase SDK Modules directly via static CDN
+    import { initializeApp } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-app.js';
+    import { getAuth, signInAnonymously, onAuthStateChanged } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-auth.js';
+    import { getFirestore, doc, setDoc, deleteDoc, collection, onSnapshot } from 'https://www.gstatic.com/firebasejs/11.6.1/firebase-firestore.js';
+
+    const { useState, useEffect, useMemo } = React;
+
+    // =========================================================================
+    // 🛠️ PRE-CONFIGURED FIREBASE CREDENTIALS (FROM YOUR SCREENSHOT) 🛠️
+    // =========================================================================
+    const DEVELOPER_FIREBASE_CONFIG = {
+      apiKey: "AIzaSyChVASSYbxIwDNy2Ac5Z1Rqlp3fP-xs-cQ",
+      authDomain: "jpmc-inventory-ffcd5.firebaseapp.com",
+      projectId: "jpmc-inventory-ffcd5",
+      storageBucket: "jpmc-inventory-ffcd5.appspot.com",
+      messagingSenderId: "573477984538",
+      appId: "1:573477984538:web:15a0af36441b50240c74a3"
+    };
+
+    const targetAppId = "jpmc-inventory-ffcd5";
+
+    // Custom Built-in High-Fidelity SVG Icon Components for absolute zero-dependency rendering
+    const SVGIcon = ({ name, className = "w-5 h-5", ...props }) => {
+      const icons = {
+        search: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z" />,
+        plus: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 4v16m8-8H4" />,
+        minus: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 12H4" />,
+        "arrow-up-right": <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 8l4 4m0 0l-4 4m4-4H3" />,
+        "arrow-down-left": <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M7 16l-4-4m0 0l4-4m-4 4h18" />,
+        "alert-triangle": <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 9v2m0 4h.01m-6.938 4h13.856c1.54 0 2.502-1.667 1.732-3L13.732 4c-.77-1.333-2.694-1.333-3.464 0L3.34 16c-.77 1.333.192 3 1.732 3z" />,
+        "trending-up": <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 7h8m0 0v8m0-8l-8 8-4-4-6 6" />,
+        package: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M20 7l-8-4-8 4m16 0l-8 4m8-4v10l-8 4m0-10L4 7m8 4v10M4 7v10l8 4" />,
+        layers: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 11H5m14 0a2 2 0 012 2v6a2 2 0 01-2 2H5a2 2 0 01-2-2v-6a2 2 0 012-2m14 0V9a2 2 0 00-2-2M5 11V9a2 2 0 012-2m0 0V5a2 2 0 012-2h6a2 2 0 012 2v2M7 7h10" />,
+        activity: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z" />,
+        "file-text": <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12h6m-6 4h6m2 5H7a2 2 0 01-2-2V5a2 2 0 012-2h5.586a1 1 0 01.707.293l5.414 5.414a1 1 0 01.293.707V19a2 2 0 01-2 2z" />,
+        "check-circle": <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />,
+        x: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M6 18L18 6M6 6l18 12" />,
+        "refresh-cw": <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M4 4v5h.582m15.356 2A8.001 8.001 0 1121.21 8H18" />,
+        sun: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3m15.364-6.364l-.707.707M6.343 17.657l-.707.707m0-12.728l.707.707m12.728 12.728l.707-.707M12 8a4 4 0 100 8 4 4 0 000-8z" />,
+        battery: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17 11h2a1 1 0 011 1v2a1 1 0 01-1 1h-2m-12 0h12a1 1 0 001-1v-4a1 1 0 00-1-1H5a1 1 0 00-1 1v4a1 1 0 001 1z" />,
+        zap: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 10V3L4 14h7v7l9-11h-7z" />,
+        cable: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 3v1m0 16v1m9-9h-1M4 12H3" />,
+        warehouse: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M3 12l2-2m0 0l7-7 7 7M5 10v10a1 1 0 001 1h3m10-11l2 2m-2-2v10a1 1 0 01-1 1h-3m-6 0a1 1 0 001-1v-4a1 1 0 011-1h2a1 1 0 011 1v4a1 1 0 001 1m-6 0h6" />,
+        trash: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 7l-.867 12.142A2 2 0 0116.138 21H7.862a2 2 0 01-1.995-1.858L5 7m5 4v6m4-6v6m1-10V4a1 1 0 00-1-1h-4a1 1 0 00-1 1v3M4 7h16" />,
+        "shield-check": <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z" />,
+        award: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M12 15v5m-3-3.857L12 15l3 1.143M12 10a4 4 0 100-8 4 4 0 000-8z" />,
+        flame: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M17.657 18.657A8 8 0 016.343 7.343S7 9 9 10c0-2 .5-5 2.986-7C14 5 16.09 5.777 17.656 7.343A7.975 7.975 0 0120 13a7.975 7.975 0 01-2.343 5.657z" />,
+        info: <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M13 16h-1v-4h-1m1-4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+      };
+
+      return (
+        <svg className={className} fill="none" viewBox="0 0 24 24" stroke="currentColor" {...props}>
+          {icons[name] || <circle cx="12" cy="12" r="10" strokeWidth="2" />}
+        </svg>
+      );
+    };
+
+    // Fleet Partner Brands list
+    const PARTNER_BRANDS = [
+      "LONGi", "Canadian Solar", "Jinko Solar", "JA Solar", "Dyness", 
+      "Huawei", "Deye", "Solis", "Sungrow", "LVTopsun", 
+      "GoodWe", "SolaX", "AE Solar", "TCL", "Astronergy", 
+      "Tongwei", "GenixGreen", "CST"
+    ];
+
+    // Default template data used for local-fallback & automatic database setup seeding
+    const INITIAL_INVENTORY = [
+      { id: '1', name: '620W Bi-Facial Solar Panel (Tier 1)', sku: 'SP-620W-BIFACIAL', brand: 'Canadian Solar', category: 'Solar Panels', quantity: 240, minThreshold: 40, unit: 'pcs', price: 9200.00, location: 'Aisle A-1' },
+      { id: '2', name: '580W Bi-Facial Solar Panel (Tier 1)', sku: 'SP-580W-BIFACIAL', brand: 'AE Solar', category: 'Solar Panels', quantity: 120, minThreshold: 30, unit: 'pcs', price: 8100.00, location: 'Aisle A-2' },
+      { id: '3', name: '100AH 51.2V Lithium Battery Pack (LFP)', sku: 'BAT-100AH-51.2V', brand: 'Dyness', category: 'Batteries', quantity: 60, minThreshold: 10, unit: 'pcs', price: 78000.00, location: 'Zone B-Secure' },
+      { id: '4', name: '18KW Hybrid Solar Inverter', sku: 'INV-18KW-HYB', brand: 'Deye', category: 'Inverters', quantity: 15, minThreshold: 3, unit: 'pcs', price: 165000.00, location: 'Aisle C-1' },
+      { id: '5', name: '16KW Hybrid Solar Inverter', sku: 'INV-16KW-HYB', brand: 'Deye', category: 'Inverters', quantity: 10, minThreshold: 2, unit: 'pcs', price: 145000.00, location: 'Aisle C-2' },
+      { id: '6', name: '14KW Hybrid Solar Inverter', sku: 'INV-14KW-HYB', brand: 'LuxpowerTek', category: 'Inverters', quantity: 18, minThreshold: 4, unit: 'pcs', price: 135000.00, location: 'Aisle C-3' },
+      { id: '7', name: '12KW Hybrid Solar Inverter', sku: 'INV-12KW-HYB', brand: 'Solis', category: 'Inverters', quantity: 20, minThreshold: 4, unit: 'pcs', price: 120000.00, location: 'Aisle C-4' },
+      { id: '8', name: '10KW Hybrid Solar Inverter', sku: 'INV-10KW-HYB', brand: 'GoodWe', category: 'Inverters', quantity: 14, minThreshold: 3, unit: 'pcs', price: 105000.00, location: 'Aisle C-5' },
+      { id: '9', name: '8KW Hybrid Solar Inverter', sku: 'INV-8KW-HYB', brand: 'Solis', category: 'Inverters', quantity: 22, minThreshold: 5, unit: 'pcs', price: 85000.00, location: 'Aisle C-6' },
+      { id: '10', name: '6KW Hybrid Solar Inverter', sku: 'INV-6KW-HYB', brand: 'Deye', category: 'Inverters', quantity: 30, minThreshold: 6, unit: 'pcs', price: 65000.00, location: 'Aisle C-7' },
+      { id: '11', name: '3KW Hybrid Solar Inverter', sku: 'INV-3KW-HYB', brand: 'Solis', category: 'Inverters', quantity: 25, minThreshold: 5, unit: 'pcs', price: 45000.00, location: 'Aisle C-8' },
+      { id: '12', name: 'LVTopsun 10 AWG PV Solar Cable Red (100m)', sku: 'CAB-LV-10R', brand: 'LVTopsun', category: 'Cabling & Wires', quantity: 95, minThreshold: 20, unit: 'rolls', price: 4500.00, location: 'Rack D-1' },
+      { id: '13', name: 'LVTopsun 10 AWG PV Solar Cable Black (100m)', sku: 'CAB-LV-10B', brand: 'LVTopsun', category: 'Cabling & Wires', quantity: 110, minThreshold: 20, unit: 'rolls', price: 4500.00, location: 'Rack D-1' },
+      { id: '14', name: 'Heavy-Duty Aluminum Solar Mounting Rails Set', sku: 'MNT-ALUM-RAIL', brand: 'LVTopsun', category: 'Mounting & Accessories', quantity: 500, minThreshold: 60, unit: 'sets', price: 2800.00, location: 'Bin E-2' },
+      { id: '15', name: 'Mobile WiFi Monitoring System & CT Limiter Module', sku: 'ACC-WIFI-MONITOR', brand: 'Deye', category: 'Mounting & Accessories', quantity: 45, minThreshold: 8, unit: 'pcs', price: 3500.00, location: 'Bin E-3' }
+    ];
+
+    const STANDARD_KITS = [
+      {
+        id: 'kit-21-08-kw',
+        name: '21.08 KW Hybrid Package',
+        promoPrice: 729000.00,
+        originalPrice: 979000.00,
+        savings: '₱30,000 - ₱40,000/mo',
+        electricBillRange: '₱35,000.00 - ₱50,000.00',
+        inclusions: '18KW Hybrid Inverter, 34x 620W Panels, 1x 100AH Battery, App, Mountings & Safety Devices',
+        items: [
+          { sku: 'SP-620W-BIFACIAL', quantity: 34 },
+          { sku: 'INV-18KW-HYB', quantity: 1 },
+          { sku: 'BAT-100AH-51.2V', quantity: 1 },
+          { sku: 'CAB-LV-10R', quantity: 4 },
+          { sku: 'CAB-LV-10B', quantity: 4 },
+          { sku: 'MNT-ALUM-RAIL', quantity: 34 },
+          { sku: 'ACC-WIFI-MONITOR', quantity: 1 }
+        ]
+      },
+      {
+        id: 'kit-19-84-kw',
+        name: '19.84 KW Hybrid Package',
+        promoPrice: 709000.00,
+        originalPrice: 959000.00,
+        savings: '₱25,000 - ₱35,000/mo',
+        electricBillRange: '₱30,000.00 - ₱40,000.00',
+        inclusions: '18KW Hybrid Inverter, 32x 620W Panels, 1x 100AH Battery, App, Mountings & Safety Devices',
+        items: [
+          { sku: 'SP-620W-BIFACIAL', quantity: 32 },
+          { sku: 'INV-18KW-HYB', quantity: 1 },
+          { sku: 'BAT-100AH-51.2V', quantity: 1 },
+          { sku: 'CAB-LV-10R', quantity: 3 },
+          { sku: 'CAB-LV-10B', quantity: 3 },
+          { sku: 'MNT-ALUM-RAIL', quantity: 32 },
+          { sku: 'ACC-WIFI-MONITOR', quantity: 1 }
+        ]
+      },
+      {
+        id: 'kit-18-60-kw',
+        name: '18.60 KW Hybrid Package',
+        promoPrice: 669000.00,
+        originalPrice: 920000.00,
+        savings: '₱23,000 - ₱28,000/mo',
+        electricBillRange: '₱25,000.00 - ₱35,000.00',
+        inclusions: '16KW Hybrid Inverter, 30x 620W Panels, 1x 100AH Battery, App, Mountings & Safety Devices',
+        items: [
+          { sku: 'SP-620W-BIFACIAL', quantity: 30 },
+          { sku: 'INV-16KW-HYB', quantity: 1 },
+          { sku: 'BAT-100AH-51.2V', quantity: 1 },
+          { sku: 'CAB-LV-10R', quantity: 3 },
+          { sku: 'CAB-LV-10B', quantity: 3 },
+          { sku: 'MNT-ALUM-RAIL', quantity: 30 },
+          { sku: 'ACC-WIFI-MONITOR', quantity: 1 }
+        ]
+      },
+      {
+        id: 'kit-17-36-kw',
+        name: '17.36 KW Hybrid Package',
+        promoPrice: 645000.00,
+        originalPrice: 895000.00,
+        savings: '₱20,000 - ₱25,000/mo',
+        electricBillRange: '₱24,000.00 - ₱30,000.00',
+        inclusions: '14KW Hybrid Inverter, 28x 620W Panels, 1x 100AH Battery, App, Mountings & Safety Devices',
+        items: [
+          { sku: 'SP-620W-BIFACIAL', quantity: 28 },
+          { sku: 'INV-14KW-HYB', quantity: 1 },
+          { sku: 'BAT-100AH-51.2V', quantity: 1 },
+          { sku: 'CAB-LV-10R', quantity: 3 },
+          { sku: 'CAB-LV-10B', quantity: 3 },
+          { sku: 'MNT-ALUM-RAIL', quantity: 28 },
+          { sku: 'ACC-WIFI-MONITOR', quantity: 1 }
+        ]
+      },
+      {
+        id: 'kit-16-12-kw',
+        name: '16.12 KW Hybrid Package',
+        promoPrice: 619000.00,
+        originalPrice: 865000.00,
+        savings: '₱17,000 - ₱24,000/mo',
+        electricBillRange: '₱20,000.00 - ₱28,000.00',
+        inclusions: '14KW Hybrid Inverter, 26x 620W Panels, 1x 100AH Battery, App, Mountings & Safety Devices',
+        items: [
+          { sku: 'SP-620W-BIFACIAL', quantity: 26 },
+          { sku: 'INV-14KW-HYB', quantity: 1 },
+          { sku: 'BAT-100AH-51.2V', quantity: 1 },
+          { sku: 'CAB-LV-10R', quantity: 2 },
+          { sku: 'CAB-LV-10B', quantity: 2 },
+          { sku: 'MNT-ALUM-RAIL', quantity: 26 },
+          { sku: 'ACC-WIFI-MONITOR', quantity: 1 }
+        ]
+      },
+      {
+        id: 'kit-14-88-kw',
+        name: '14.88 KW Hybrid Package',
+        promoPrice: 579000.00,
+        originalPrice: 815000.00,
+        savings: '₱15,000 - ₱22,000/mo',
+        electricBillRange: '₱17,000.00 - ₱26,000.00',
+        inclusions: '12KW Hybrid Inverter, 24x 620W Panels, 1x 100AH Battery, App, Mountings & Safety Devices',
+        items: [
+          { sku: 'SP-620W-BIFACIAL', quantity: 24 },
+          { sku: 'INV-12KW-HYB', quantity: 1 },
+          { sku: 'BAT-100AH-51.2V', quantity: 1 },
+          { sku: 'CAB-LV-10R', quantity: 2 },
+          { sku: 'CAB-LV-10B', quantity: 2 },
+          { sku: 'MNT-ALUM-RAIL', quantity: 24 },
+          { sku: 'ACC-WIFI-MONITOR', quantity: 1 }
+        ]
+      },
+      {
+        id: 'kit-13-64-kw',
+        name: '13.64 KW Hybrid Package',
+        promoPrice: 539000.00,
+        originalPrice: 789000.00,
+        savings: '₱14,000 - ₱20,000/mo',
+        electricBillRange: '₱15,000.00 - ₱24,000.00',
+        inclusions: '12KW Hybrid Inverter, 22x 620W Panels, 1x 100AH Battery, App, Mountings & Safety Devices',
+        items: [
+          { sku: 'SP-620W-BIFACIAL', quantity: 22 },
+          { sku: 'INV-12KW-HYB', quantity: 1 },
+          { sku: 'BAT-100AH-51.2V', quantity: 1 },
+          { sku: 'CAB-LV-10R', quantity: 2 },
+          { sku: 'CAB-LV-10B', quantity: 2 },
+          { sku: 'MNT-ALUM-RAIL', quantity: 22 },
+          { sku: 'ACC-WIFI-MONITOR', quantity: 1 }
+        ]
+      },
+      {
+        id: 'kit-12-40-kw',
+        name: '12.40 KW Hybrid Package',
+        promoPrice: 477000.00,
+        originalPrice: 705000.00,
+        savings: '₱12,000 - ₱18,000/mo',
+        electricBillRange: '₱14,000.00 - ₱22,000.00',
+        inclusions: '10KW Hybrid Inverter, 20x 620W Panels, 1x 100AH Battery, App, Mountings & Safety Devices',
+        items: [
+          { sku: 'SP-620W-BIFACIAL', quantity: 20 },
+          { sku: 'INV-10KW-HYB', quantity: 1 },
+          { sku: 'BAT-100AH-51.2V', quantity: 1 },
+          { sku: 'CAB-LV-10R', quantity: 2 },
+          { sku: 'CAB-LV-10B', quantity: 2 },
+          { sku: 'MNT-ALUM-RAIL', quantity: 20 },
+          { sku: 'ACC-WIFI-MONITOR', quantity: 1 }
+        ]
+      },
+      {
+        id: 'kit-11-16-kw',
+        name: '11.16 KW Hybrid Package',
+        promoPrice: 452000.00,
+        originalPrice: 675000.00,
+        savings: '₱11,000 - ₱16,000/mo',
+        electricBillRange: '₱12,000.00 - ₱20,000.00',
+        inclusions: '10KW Hybrid Inverter, 18x 580W Panels, 1x 100AH Battery, App, Mountings & Safety Devices',
+        items: [
+          { sku: 'SP-580W-BIFACIAL', quantity: 18 },
+          { sku: 'INV-10KW-HYB', quantity: 1 },
+          { sku: 'BAT-100AH-51.2V', quantity: 1 },
+          { sku: 'CAB-LV-10R', quantity: 2 },
+          { sku: 'CAB-LV-10B', quantity: 2 },
+          { sku: 'MNT-ALUM-RAIL', quantity: 18 },
+          { sku: 'ACC-WIFI-MONITOR', quantity: 1 }
+        ]
+      },
+      {
+        id: 'kit-9-92-kw',
+        name: '9.92 KW Hybrid Package',
+        promoPrice: 395000.00,
+        originalPrice: 579000.00,
+        savings: '₱10,000 - ₱15,000/mo',
+        electricBillRange: '₱11,000.00 - ₱18,000.00',
+        inclusions: '8KW Hybrid Inverter, 16x 580W Panels, 1x 100AH Battery, App, Mountings & Safety Devices',
+        items: [
+          { sku: 'SP-580W-BIFACIAL', quantity: 16 },
+          { sku: 'INV-8KW-HYB', quantity: 1 },
+          { sku: 'BAT-100AH-51.2V', quantity: 1 },
+          { sku: 'CAB-LV-10R', quantity: 1 },
+          { sku: 'CAB-LV-10B', quantity: 1 },
+          { sku: 'MNT-ALUM-RAIL', quantity: 16 },
+          { sku: 'ACC-WIFI-MONITOR', quantity: 1 }
+        ]
+      },
+      {
+        id: 'kit-8-06-kw',
+        name: '8.06 KW Hybrid Package',
+        promoPrice: 345000.00,
+        originalPrice: 520000.00,
+        savings: '₱8,000 - ₱11,000/mo',
+        electricBillRange: '₱9,000.00 - ₱13,000.00',
+        inclusions: '6KW Hybrid Inverter, 13x 620W Panels, 1x 100AH Battery, App, Mountings & Safety Devices',
+        items: [
+          { sku: 'SP-620W-BIFACIAL', quantity: 13 },
+          { sku: 'INV-6KW-HYB', quantity: 1 },
+          { sku: 'BAT-100AH-51.2V', quantity: 1 },
+          { sku: 'CAB-LV-10R', quantity: 1 },
+          { sku: 'CAB-LV-10B', quantity: 1 },
+          { sku: 'MNT-ALUM-RAIL', quantity: 13 },
+          { sku: 'ACC-WIFI-MONITOR', quantity: 1 }
+        ]
+      },
+      {
+        id: 'kit-7-44-kw',
+        name: '7.44 KW Hybrid Package',
+        promoPrice: 329000.00,
+        originalPrice: 499000.00,
+        savings: '₱7,000 - ₱10,000/mo',
+        electricBillRange: '₱8,000.00 - ₱12,000.00',
+        inclusions: '6KW Hybrid Inverter, 12x 620W Panels, 1x 100AH Battery, App, Mountings & Safety Devices',
+        items: [
+          { sku: 'SP-620W-BIFACIAL', quantity: 12 },
+          { sku: 'INV-6KW-HYB', quantity: 1 },
+          { sku: 'BAT-100AH-51.2V', quantity: 1 },
+          { sku: 'CAB-LV-10R', quantity: 1 },
+          { sku: 'CAB-LV-10B', quantity: 1 },
+          { sku: 'MNT-ALUM-RAIL', quantity: 12 },
+          { sku: 'ACC-WIFI-MONITOR', quantity: 1 }
+        ]
+      },
+      {
+        id: 'kit-6-20-kw',
+        name: '6.20 KW Hybrid Package',
+        promoPrice: 298000.00,
+        originalPrice: 465000.00,
+        savings: '₱6,000 - ₱8,500/mo',
+        electricBillRange: '₱6,000.00 - ₱10,000.00',
+        inclusions: '6KW Hybrid Inverter, 10x 620W Panels, 1x 100AH Battery, App, Mountings & Safety Devices',
+        items: [
+          { sku: 'SP-620W-BIFACIAL', quantity: 10 },
+          { sku: 'INV-6KW-HYB', quantity: 1 },
+          { sku: 'BAT-100AH-51.2V', quantity: 1 },
+          { sku: 'CAB-LV-10R', quantity: 1 },
+          { sku: 'CAB-LV-10B', quantity: 1 },
+          { sku: 'MNT-ALUM-RAIL', quantity: 10 },
+          { sku: 'ACC-WIFI-MONITOR', quantity: 1 }
+        ]
+      },
+      {
+        id: 'kit-3-72-kw',
+        name: '3.72 KW Hybrid Package',
+        promoPrice: 229000.00,
+        originalPrice: 355000.00,
+        savings: '₱3,000 - ₱5,000/mo',
+        electricBillRange: '₱4,000.00 - ₱7,000.00',
+        inclusions: '3KW Hybrid Inverter, 6x 620W Panels, 1x 100AH Battery, App, Mountings & Safety Devices',
+        items: [
+          { sku: 'SP-620W-BIFACIAL', quantity: 6 },
+          { sku: 'INV-3KW-HYB', quantity: 1 },
+          { sku: 'BAT-100AH-51.2V', quantity: 1 },
+          { sku: 'CAB-LV-10R', quantity: 1 },
+          { sku: 'CAB-LV-10B', quantity: 1 },
+          { sku: 'MNT-ALUM-RAIL', quantity: 6 },
+          { sku: 'ACC-WIFI-MONITOR', quantity: 1 }
+        ]
+      }
+    ];
+
+    const CATEGORIES = ['All', 'Solar Panels', 'Batteries', 'Inverters', 'Cabling & Wires', 'Mounting & Accessories'];
+
+    export default function App() {
+      const [currentBrand, setCurrentBrand] = useState(() => {
+        return localStorage.getItem('solar_tracker_brand') || 'jpmc';
+      });
+
+      // Operational Database Feeds
+      const [inventory, setInventory] = useState(INITIAL_INVENTORY);
+      const [transactions, setTransactions] = useState([]);
+
+      const [selectedCategory, setSelectedCategory] = useState('All');
+      const [selectedBrandFilter, setSelectedBrandFilter] = useState('All');
+      const [searchQuery, setSearchQuery] = useState('');
+      
+      const [showAddModal, setShowAddModal] = useState(false);
+      const [showTransactionModal, setShowTransactionModal] = useState(false);
+      const [selectedItemForTx, setSelectedItemForTx] = useState(null);
+      const [txType, setTxType] = useState('IN');
+      const [txQuantity, setTxQuantity] = useState('');
+      const [txNote, setTxNote] = useState('');
+
+      const [newItem, setNewItem] = useState({
+        name: '', sku: '', brand: 'Canadian Solar', category: 'Solar Panels', quantity: '', minThreshold: '', unit: 'pcs', price: '', location: ''
+      });
+
+      const [toast, setToast] = useState(null);
+      const [activeTab, setActiveTab] = useState('dashboard');
+
+      // Firebase Status States
+      const [firebaseReady, setFirebaseReady] = useState(false);
+      const [liveUser, setLiveUser] = useState(null);
+      const [dbInstance, setDbInstance] = useState(null);
+
+      const showNotification = (message, type = 'success') => {
+        setToast({ message, type });
+        setTimeout(() => setToast(null), 3500);
+      };
+
+      // Real-time Database Initializer Workflow (RULE 1, 2, and 3 Compliance)
+      useEffect(() => {
+        let dbApp, dbAuth, dbStore;
+        try {
+          dbApp = initializeApp(DEVELOPER_FIREBASE_CONFIG);
+          dbAuth = getAuth(dbApp);
+          dbStore = getFirestore(dbApp);
+          setDbInstance(dbStore);
+        } catch (e) {
+          console.error("Firebase startup exception:", e);
+          setFirebaseReady(false);
+          // Local Fallback loading
+          const savedInv = localStorage.getItem('solar_tracker_inventory');
+          const savedTx = localStorage.getItem('solar_tracker_transactions');
+          if (savedInv) setInventory(JSON.parse(savedInv));
+          if (savedTx) setTransactions(JSON.parse(savedTx));
+          return;
+        }
+
+        // Rule 3: Authentication FIRST before listening or querying
+        const authAndConnect = async () => {
+          let retryCount = 5;
+          let delay = 1000;
+          while (retryCount > 0) {
+            try {
+              await signInAnonymously(dbAuth);
+              setFirebaseReady(true);
+              break;
+            } catch (err) {
+              retryCount -= 1;
+              if (retryCount === 0) {
+                console.error("Authentication rejected:", err);
+                showNotification("Could not sync with central cloud. Offline mode.", "error");
+                setFirebaseReady(false);
+              } else {
+                await new Promise(r => setTimeout(r, delay));
+                delay *= 2;
+              }
+            }
+          }
+        };
+
+        authAndConnect();
+
+        const unsubAuth = onAuthStateChanged(dbAuth, (user) => {
+          setLiveUser(user);
+        });
+
+        return () => unsubAuth();
+      }, []);
+
+      // Real-time Firestore Subscriptions
+      useEffect(() => {
+        if (!firebaseReady || !dbInstance || !liveUser) return;
+
+        // RULE 1: Strict collection path schema mapping
+        const invCol = collection(dbInstance, 'artifacts', targetAppId, 'public', 'data', 'inventory');
+        const txCol = collection(dbInstance, 'artifacts', targetAppId, 'public', 'data', 'transactions');
+
+        // Snapshot Inventory Listener
+        const unsubInv = onSnapshot(invCol, (snap) => {
+          const fetched = [];
+          snap.forEach(doc => {
+            fetched.push({ id: doc.id, ...doc.data() });
+          });
+
+          if (fetched.length === 0) {
+            // First time initialization: Seed cloud collections with marketing template values
+            INITIAL_INVENTORY.forEach(async (item) => {
+              try {
+                await setDoc(doc(dbInstance, 'artifacts', targetAppId, 'public', 'data', 'inventory', item.id), item);
+              } catch (e) {
+                console.error("Inventory seeding error:", e);
+              }
+            });
+          } else {
+            setInventory(fetched);
+            localStorage.setItem('solar_tracker_inventory', JSON.stringify(fetched));
+          }
+        }, (err) => {
+          console.error("Firestore live stream failure:", err);
+          showNotification("Permission error. Ensure rules are set to test mode.", "error");
+        });
+
+        // Snapshot Transactions Log Listener
+        const unsubTx = onSnapshot(txCol, (snap) => {
+          const fetchedTxs = [];
+          snap.forEach(doc => {
+            fetchedTxs.push({ id: doc.id, ...doc.data() });
+          });
+
+          // RULE 2: Client side logical data ordering
+          fetchedTxs.sort((a, b) => {
+            return new Date(b.date) - new Date(a.date);
+          });
+
+          setTransactions(fetchedTxs);
+          localStorage.setItem('solar_tracker_transactions', JSON.stringify(fetchedTxs));
+        }, (err) => {
+          console.error("Transaction stream issue:", err);
+        });
+
+        return () => {
+          unsubInv();
+          unsubTx();
+        };
+
+      }, [firebaseReady, liveUser, dbInstance]);
+
+      // Database Writer Proxies
+      const syncWriteItem = async (updatedItem) => {
+        if (firebaseReady && dbInstance) {
+          try {
+            await setDoc(doc(dbInstance, 'artifacts', targetAppId, 'public', 'data', 'inventory', updatedItem.id), updatedItem);
+          } catch (e) {
+            console.error("Cloud write failed:", e);
+            showNotification("Writing sync error.", "error");
+          }
+        } else {
+          setInventory(prev => {
+            const next = prev.map(i => i.id === updatedItem.id ? updatedItem : i);
+            localStorage.setItem('solar_tracker_inventory', JSON.stringify(next));
+            return next;
+          });
+        }
+      };
+
+      const syncNewCatalogItem = async (newItem) => {
+        if (firebaseReady && dbInstance) {
+          try {
+            await setDoc(doc(dbInstance, 'artifacts', targetAppId, 'public', 'data', 'inventory', newItem.id), newItem);
+          } catch (e) {
+            console.error("Live save failed:", e);
+          }
+        } else {
+          setInventory(prev => {
+            const next = [...prev, newItem];
+            localStorage.setItem('solar_tracker_inventory', JSON.stringify(next));
+            return next;
+          });
+        }
+      };
+
+      const syncDeleteItem = async (itemId) => {
+        if (firebaseReady && dbInstance) {
+          try {
+            await deleteDoc(doc(dbInstance, 'artifacts', targetAppId, 'public', 'data', 'inventory', itemId));
+          } catch (e) {
+            console.error("Deletion sync error:", e);
+          }
+        } else {
+          setInventory(prev => {
+            const next = prev.filter(i => i.id !== itemId);
+            localStorage.setItem('solar_tracker_inventory', JSON.stringify(next));
+            return next;
+          });
+        }
+      };
+
+      const syncAppendLog = async (logEntry) => {
+        if (firebaseReady && dbInstance) {
+          try {
+            await setDoc(doc(dbInstance, 'artifacts', targetAppId, 'public', 'data', 'transactions', logEntry.id), logEntry);
+          } catch (e) {
+            console.error("Logging commit error:", e);
+          }
+        } else {
+          setTransactions(prev => {
+            const next = [logEntry, ...prev];
+            localStorage.setItem('solar_tracker_transactions', JSON.stringify(next));
+            return next;
+          });
+        }
+      };
+
+      const stats = useMemo(() => {
+        const totalItems = inventory.reduce((acc, curr) => acc + (parseInt(curr.quantity, 10) || 0), 0);
+        const totalValue = inventory.reduce((acc, curr) => acc + ((parseInt(curr.quantity, 10) || 0) * (parseFloat(curr.price) || 0)), 0);
+        const lowStockCount = inventory.filter(item => (parseInt(item.quantity, 10) || 0) <= (parseInt(item.minThreshold, 10) || 0)).length;
+        const categoryCounts = inventory.reduce((acc, curr) => {
+          acc[curr.category] = (acc[curr.category] || 0) + (parseInt(curr.quantity, 10) || 0);
+          return acc;
+        }, {});
+        return { totalItems, totalValue, lowStockCount, categoryCounts };
+      }, [inventory]);
+
+      const filteredInventory = useMemo(() => {
+        return inventory.filter(item => {
+          const matchesCategory = selectedCategory === 'All' || item.category === selectedCategory;
+          const matchesBrand = selectedBrandFilter === 'All' || item.brand === selectedBrandFilter;
+          const matchesSearch = item.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
+                                item.sku.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                item.location.toLowerCase().includes(searchQuery.toLowerCase()) ||
+                                item.brand.toLowerCase().includes(searchQuery.toLowerCase());
+          return matchesCategory && matchesBrand && matchesSearch;
+        });
+      }, [inventory, selectedCategory, selectedBrandFilter, searchQuery]);
+
+      const handleAddNewItem = async (e) => {
+        e.preventDefault();
+        if (!newItem.name || !newItem.sku || !newItem.quantity || !newItem.price) {
+          showNotification('Please fill in all required fields.', 'error');
+          return;
+        }
+
+        if (inventory.some(item => item.sku.trim().toUpperCase() === newItem.sku.trim().toUpperCase())) {
+          showNotification('SKU already exists! Please use a unique identifier.', 'error');
+          return;
+        }
+
+        const createdItem = {
+          id: `item-${Date.now()}`,
+          name: newItem.name,
+          sku: newItem.sku.toUpperCase(),
+          brand: newItem.brand,
+          category: newItem.category,
+          quantity: parseInt(newItem.quantity, 10),
+          minThreshold: parseInt(newItem.minThreshold, 10) || 5,
+          unit: newItem.unit,
+          price: parseFloat(newItem.price),
+          location: newItem.location || 'Warehouse Shelf'
+        };
+
+        await syncNewCatalogItem(createdItem);
+
+        const newLog = {
+          id: `tx-${Date.now()}`,
+          date: new Date().toLocaleString(),
+          type: 'IN',
+          sku: createdItem.sku,
+          quantity: createdItem.quantity,
+          note: `Registered new component item: ${createdItem.name}`
+        };
+        await syncAppendLog(newLog);
+
+        setNewItem({
+          name: '', sku: '', brand: 'Canadian Solar', category: 'Solar Panels', quantity: '', minThreshold: '', unit: 'pcs', price: '', location: ''
+        });
+        setShowAddModal(false);
+        showNotification(`Successfully registered ${createdItem.name} into real-time database.`);
+      };
+
+      const handleTransactionSubmit = async (e) => {
+        e.preventDefault();
+        if (!selectedItemForTx || !txQuantity) return;
+
+        const qty = parseInt(txQuantity, 10);
+        if (qty <= 0) {
+          showNotification('Please enter a valid positive quantity.', 'error');
+          return;
+        }
+
+        const targetItem = inventory.find(i => i.id === selectedItemForTx.id);
+        if (!targetItem) return;
+
+        if (txType === 'OUT' && targetItem.quantity < qty) {
+          showNotification(`Insufficient stock! Only ${targetItem.quantity} ${targetItem.unit} remaining.`, 'error');
+          return;
+        }
+
+        const updatedQty = txType === 'IN' ? targetItem.quantity + qty : targetItem.quantity - qty;
+        await syncWriteItem({ ...targetItem, quantity: updatedQty });
+
+        const newLog = {
+          id: `tx-${Date.now()}`,
+          date: new Date().toLocaleString(),
+          type: txType,
+          sku: targetItem.sku,
+          quantity: qty,
+          note: txNote || `${txType === 'IN' ? 'Stock Intake' : 'Dispatched to installation site'}`
+        };
+        await syncAppendLog(newLog);
+
+        setShowTransactionModal(false);
+        setTxQuantity('');
+        setTxNote('');
+        showNotification(`Inventory change recorded globally for SKU: ${targetItem.sku}`);
+      };
+
+      const handleDeployKit = async (kit) => {
+        const availability = checkKitAvailability(kit);
+        const insufficientItems = availability.filter(a => !a.hasSufficient);
+
+        if (insufficientItems.length > 0) {
+          showNotification(`Cannot deploy. Insufficient stock of ${insufficientItems[0].itemName}`, 'error');
+          return;
+        }
+
+        // Sequential DB writing loops
+        for (const itemMatch of kit.items) {
+          const storedItem = inventory.find(i => i.sku === itemMatch.sku);
+          if (storedItem) {
+            await syncWriteItem({ ...storedItem, quantity: storedItem.quantity - itemMatch.quantity });
+          }
+        }
+
+        const timestamp = Date.now();
+        for (let i = 0; i < kit.items.length; i++) {
+          const kitItem = kit.items[i];
+          const newTx = {
+            id: `tx-bulk-${timestamp}-${i}`,
+            date: new Date().toLocaleString(),
+            type: 'OUT',
+            sku: kitItem.sku,
+            quantity: kitItem.quantity,
+            note: `Deployed flyer promotional kit: ${kit.name}`
+          };
+          await syncAppendLog(newTx);
+        }
+
+        showNotification(`Bulk kit ${kit.name} deployed. All item counts updated.`);
+      };
+
+      const checkKitAvailability = (kit) => {
+        return kit.items.map(kitItem => {
+          const invItem = inventory.find(i => i.sku === kitItem.sku);
+          return {
+            ...kitItem,
+            itemName: invItem ? `${invItem.brand} - ${invItem.name}` : 'Unknown Product',
+            available: invItem ? invItem.quantity : 0,
+            hasSufficient: invItem ? invItem.quantity >= kitItem.quantity : false
+          };
+        });
+      };
+
+      const handleSimulation = () => {
+        if (inventory.length === 0) return;
+        const randIndex = Math.floor(Math.random() * inventory.length);
+        const randItem = inventory[randIndex];
+        const randomAction = Math.random() > 0.5 ? 'IN' : 'OUT';
+        const randomAmount = Math.floor(Math.random() * 8) + 1;
+
+        if (randomAction === 'OUT' && randItem.quantity >= randomAmount) {
+          simulateDeduct(randItem, randomAmount);
+        } else {
+          simulateAdd(randItem, randomAmount);
+        }
+      };
+
+      const simulateAdd = async (item, amount) => {
+        await syncWriteItem({ ...item, quantity: item.quantity + amount });
+        await syncAppendLog({
+          id: `tx-sim-${Date.now()}`,
+          date: new Date().toLocaleString(),
+          type: 'IN',
+          sku: item.sku,
+          quantity: amount,
+          note: 'Live Simulated replenishment arrival'
+        });
+        showNotification(`[Sim Feed] Central Database received +${amount} of ${item.sku}`);
+      };
+
+      const simulateDeduct = async (item, amount) => {
+        await syncWriteItem({ ...item, quantity: item.quantity - amount });
+        await syncAppendLog({
+          id: `tx-sim-${Date.now()}`,
+          date: new Date().toLocaleString(),
+          type: 'OUT',
+          sku: item.sku,
+          quantity: amount,
+          note: 'Live Simulated installation dispatch'
+        });
+        showNotification(`[Sim Feed] Central Database issued -${amount} of ${item.sku}`);
+      };
+
+      const handleDeleteItem = async (id, name) => {
+        if (confirm(`Are you sure you want to permanently delete ${name}?`)) {
+          await syncDeleteItem(id);
+          showNotification(`Removed ${name} from tracking storage.`);
+        }
+      };
+
+      const handleResetData = async () => {
+        const warning = "Warning: Live Database is ACTIVE. This resets and clears catalog balances globally for ALL collaborative users. Proceed?";
+        if (confirm(warning)) {
+          for (const item of INITIAL_INVENTORY) {
+            await setDoc(doc(dbInstance, 'artifacts', targetAppId, 'public', 'data', 'inventory', item.id), item);
+          }
+          await syncAppendLog({
+            id: `tx-reset-${Date.now()}`,
+            date: new Date().toLocaleString(),
+            type: 'IN',
+            sku: 'RESET_SYS',
+            quantity: 0,
+            note: 'Collaborative cloud database reset by admin'
+          });
+          showNotification("All database storage catalogs reset to specifications.");
+        }
+      };
+
+      return (
+        <div className={`min-h-screen flex flex-col font-sans antialiased transition-colors duration-300 ${currentBrand === 'jpmc' ? 'bg-[#060f1b]' : 'bg-slate-950'}`}>
+          
+          {/* Toast Notification Banner */}
+          {toast && (
+            <div className={`fixed top-5 right-5 z-50 flex items-center gap-3 p-4 rounded-xl border shadow-2xl animate-fade-in transition-all duration-300 max-w-sm
+              ${toast.type === 'error' ? 'bg-red-950 border-red-800 text-red-200' : 'bg-emerald-950 border-emerald-800 text-emerald-200'}`}
+            >
+              <SVGIcon name={toast.type === 'error' ? "alert-triangle" : "check-circle"} className="w-5 h-5 shrink-0" />
+              <p className="font-semibold text-sm">{toast.message}</p>
+              <button onClick={() => setToast(null)} className="ml-auto text-slate-400 hover:text-white">
+                <SVGIcon name="x" className="w-4 h-4" />
+              </button>
+            </div>
+          )}
+
+          {/* Top Status Bar strip */}
+          <div className="bg-slate-900 border-b border-slate-800 text-xs py-2 px-4 sm:px-6 flex flex-col sm:flex-row justify-between items-center gap-3 text-slate-300">
+            <div className="flex flex-wrap items-center justify-center sm:justify-start gap-3">
+              <span>Active Profile:</span>
+              <span className="font-bold text-white uppercase tracking-wider bg-slate-800 px-2.5 py-0.5 rounded text-[10px]">
+                {currentBrand === 'jpmc' ? 'JPMC Solartech Philippines' : 'Bright Horizon Solar'}
+              </span>
+              
+              <div className={`flex items-center gap-1.5 px-2.5 py-0.5 rounded text-[10px] font-bold uppercase transition ${firebaseReady ? 'bg-emerald-500/10 text-emerald-400 border border-emerald-500/30' : 'bg-red-500/10 text-red-400 border border-red-500/30'}`}>
+                <span className={`w-1.5 h-1.5 rounded-full ${firebaseReady ? 'bg-emerald-400 animate-pulse' : 'bg-red-400 animate-ping'}`}></span>
+                {firebaseReady ? 'Live Cloud Database Active' : 'Connecting Cloud Sync...'}
+              </div>
+            </div>
+            
+            <div className="flex items-center gap-2">
+              <span className="hidden sm:inline">Theme Profile:</span>
+              <div className="bg-slate-950 p-1 rounded-lg border border-slate-800 flex gap-1">
+                <button 
+                  onClick={() => setCurrentBrand('bright-horizon')} 
+                  className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-all ${currentBrand === 'bright-horizon' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
+                >
+                  Bright Horizon
+                </button>
+                <button 
+                  onClick={() => setCurrentBrand('jpmc')} 
+                  className={`px-2.5 py-1 rounded text-[11px] font-semibold transition-all ${currentBrand === 'jpmc' ? 'bg-amber-500 text-slate-950' : 'text-slate-400 hover:text-white'}`}
+                >
+                  JPMC Solartech
+                </button>
+              </div>
+            </div>
+          </div>
+
+          {/* Dynamic Core Header */}
+          <header className={`border-b border-slate-800 sticky top-0 z-40 transition-colors duration-300 ${currentBrand === 'jpmc' ? 'bg-[#0b2240] text-white' : 'bg-slate-900/90'}`}>
+            <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-3.5 flex flex-col sm:flex-row items-center justify-between gap-4">
+              
+              <div className="flex items-center gap-3">
+                {currentBrand === 'bright-horizon' ? (
+                  <div className="flex items-center gap-4">
+                    <svg className="w-14 h-14 shrink-0" viewBox="0 0 100 100" fill="none" xmlns="http://www.w3.org/2000/svg">
+                      <path d="M50 12 L53 25 L63 15 L60 28 L72 22 L65 34 L78 31 L68 41 L80 41 L68 48 L78 54 L65 52 L72 63 L60 58 L63 70 L53 60 L50 73 L47 60 L37 70 L40 58 L28 63 L35 52 L22 54 L32 48 L20 41 L32 41 L22 31 L35 34 L28 22 L40 28 L37 15 L47 25 Z" fill="#F59E0B" stroke="#E2E8F0" strokeWidth="1"/>
+                      <circle cx="50" cy="42" r="23" fill="#FFFFFF" stroke="#F59E0B" strokeWidth="2" />
+                      <path d="M42 42 C40 55, 55 60, 58 60 C58 55, 55 42, 42 42 Z" fill="#22C55E" />
+                      <path d="M50 25 L40 45 L48 45 L44 60 L56 38 L48 38 Z" fill="#EAB308" />
+                    </svg>
+                    <div>
+                      <h1 className="text-xl font-extrabold tracking-tight text-white flex flex-col leading-none">
+                        <span className="text-blue-500 tracking-widest text-lg font-bold">SOLAR</span>
+                        <span className="text-slate-300 font-bold text-xs uppercase tracking-widest mt-1 font-logo">BRIGHT HORIZON</span>
+                      </h1>
+                    </div>
+                  </div>
+                ) : (
+                  <div className="flex items-center gap-4">
+                    <div className="flex flex-col items-center">
+                      <svg className="w-16 h-10" viewBox="0 0 160 80" fill="none" xmlns="http://www.w3.org/2000/svg">
+                        <path d="M45 42 A 35 35 0 0 1 115 42" stroke="#E0A32E" strokeWidth="4" strokeLinecap="round" fill="none" />
+                        <line x1="80" y1="5" x2="80" y2="15" stroke="#E0A32E" strokeWidth="4" strokeLinecap="round" />
+                        <line x1="42" y1="20" x2="50" y2="25" stroke="#E0A32E" strokeWidth="4" strokeLinecap="round" />
+                        <line x1="118" y1="20" x2="110" y2="25" stroke="#E0A32E" strokeWidth="4" strokeLinecap="round" />
+                        <line x1="30" y1="42" x2="40" y2="42" stroke="#E0A32E" strokeWidth="4" strokeLinecap="round" />
+                        <line x1="130" y1="42" x2="120" y2="42" stroke="#E0A32E" strokeWidth="4" strokeLinecap="round" />
+                        <polygon points="45,45 115,45 130,68 30,68" fill="#1E293B" stroke="#F8FAFC" strokeWidth="1.5" />
+                        <line x1="80" y1="45" x2="80" y2="68" stroke="#F8FAFC" strokeWidth="1.5" />
+                        <line x1="62" y1="45" x2="52" y2="68" stroke="#F8FAFC" strokeWidth="1.5" />
+                        <line x1="98" y1="45" x2="108" y2="68" stroke="#F8FAFC" strokeWidth="1.5" />
+                        <line x1="38" y1="56" x2="122" y2="56" stroke="#F8FAFC" strokeWidth="1.5" />
+                      </svg>
+                      <span className="text-[9px] text-[#e0a32e] font-bold tracking-widest uppercase">Solartech</span>
+                    </div>
+                    <div>
+                      <h1 className="text-xl tracking-wider font-extrabold text-white flex flex-col leading-none font-logo">
+                        JPMC
+                        <span className="text-[10px] tracking-[0.2em] text-[#e0a32e] font-bold mt-1 font-sans">PHILIPPINES</span>
+                      </h1>
+                    </div>
+                  </div>
+                )}
+              </div>
+
+              <div className="flex items-center gap-3 w-full sm:w-auto justify-end">
+                <button 
+                  onClick={handleSimulation}
+                  className="bg-slate-800 hover:bg-slate-700 text-slate-200 px-3 py-2 rounded-lg text-xs font-semibold border border-slate-700 flex items-center gap-2 transition"
+                >
+                  <SVGIcon name="refresh-cw" className="w-3.5 h-3.5 animate-spin-slow" />
+                  Simulate Live Event
+                </button>
+                <button 
+                  onClick={() => setShowAddModal(true)} 
+                  className="bg-amber-500 hover:bg-amber-600 text-slate-950 px-4 py-2 rounded-lg text-sm font-semibold flex items-center gap-2 shadow-lg transition-colors cursor-pointer"
+                >
+                  <SVGIcon name="plus" className="w-4 h-4" /> Add Item
+                </button>
+              </div>
+
+            </div>
+          </header>
+
+          {/* Scrolling Brand Ticker */}
+          <div className="bg-slate-900 border-b border-slate-800 py-3 overflow-hidden">
+            <div className="max-w-7xl mx-auto px-4 flex items-center gap-4">
+              <span className="text-[10px] font-bold uppercase tracking-wider text-[#e0a32e] whitespace-nowrap shrink-0 flex items-center gap-1">
+                <SVGIcon name="shield-check" className="w-3.5 h-3.5" /> Approved Brand Partners:
+              </span>
+              <div className="flex gap-2 overflow-x-auto scrollbar-hide py-1">
+                {PARTNER_BRANDS.map(brand => (
+                  <span key={brand} className="bg-slate-950 border border-slate-800 text-slate-300 px-2.5 py-1 rounded text-xs font-semibold whitespace-nowrap">
+                    {brand}
+                  </span>
+                ))}
+              </div>
+            </div>
+          </div>
+
+          {/* Main Dashboard Layout */}
+          <main className="flex-1 max-w-7xl w-full mx-auto px-4 sm:px-6 lg:px-8 py-6">
+            
+            {/* View Selectors */}
+            <div className="flex border-b border-slate-800 mb-6 gap-2 overflow-x-auto pb-1">
+              <button 
+                onClick={() => setActiveTab('dashboard')}
+                className={`px-4 py-2 rounded-t-lg font-medium text-sm flex items-center gap-2 transition-all shrink-0 ${activeTab === 'dashboard' ? 'bg-slate-900 border-t-2 border-amber-500 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-900/50'}`}
+              >
+                <SVGIcon name="activity" className="w-4 h-4 text-amber-400" />
+                Dashboard Center
+              </button>
+              <button 
+                onClick={() => setActiveTab('inventory')}
+                className={`px-4 py-2 rounded-t-lg font-medium text-sm flex items-center gap-2 transition-all shrink-0 ${activeTab === 'inventory' ? 'bg-slate-900 border-t-2 border-amber-500 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-900/50'}`}
+              >
+                <SVGIcon name="layers" className="w-4 h-4 text-emerald-400" />
+                Stock Inventory List
+              </button>
+              <button 
+                onClick={() => setActiveTab('kits')}
+                className={`px-4 py-2 rounded-t-lg font-medium text-sm flex items-center gap-2 transition-all shrink-0 ${activeTab === 'kits' ? 'bg-slate-900 border-t-2 border-amber-500 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-900/50'}`}
+              >
+                <SVGIcon name="warehouse" className="w-4 h-4 text-indigo-400" />
+                Promo Kit Builder ({STANDARD_KITS.length})
+              </button>
+              <button 
+                onClick={() => setActiveTab('history')}
+                className={`px-4 py-2 rounded-t-lg font-medium text-sm flex items-center gap-2 transition-all shrink-0 ${activeTab === 'history' ? 'bg-slate-900 border-t-2 border-amber-500 text-white' : 'text-slate-400 hover:text-white hover:bg-slate-900/50'}`}
+              >
+                <SVGIcon name="file-text" className="w-4 h-4 text-blue-400" />
+                Activity Log
+              </button>
+            </div>
+
+            {/* --- DASHBOARD VIEW --- */}
+            {activeTab === 'dashboard' && (
+              <div className="space-y-6">
+                
+                {/* Metric Cards */}
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 relative overflow-hidden">
+                    <p className="text-slate-400 text-sm font-medium">Total Tracked Stock Units</p>
+                    <h3 className="text-3xl font-bold mt-2 text-white">{stats.totalItems.toLocaleString()}</h3>
+                    <div className="flex items-center gap-1.5 mt-2 text-xs text-amber-400">
+                      <span className="font-semibold">{inventory.length}</span> unique item SKUs in database
+                    </div>
+                  </div>
+
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 relative overflow-hidden">
+                    <p className="text-slate-400 text-sm font-medium">Net Warehouse Value</p>
+                    <h3 className="text-2xl font-bold mt-3 text-emerald-400">₱{stats.totalValue.toLocaleString(undefined, { minimumFractionDigits: 2 })}</h3>
+                    <p className="text-slate-500 text-xs mt-2">Valued based on Philippine Market Rates</p>
+                  </div>
+
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 relative overflow-hidden">
+                    <p className="text-slate-400 text-sm font-medium">Low Stock Alerts</p>
+                    <h3 className={`text-3xl font-bold mt-2 ${stats.lowStockCount > 0 ? 'text-red-400 animate-pulse' : 'text-emerald-400'}`}>
+                      {stats.lowStockCount}
+                    </h3>
+                    <p className="text-slate-500 text-xs mt-2">
+                      {stats.lowStockCount > 0 ? 'Urgent procurement/re-orders recommended' : 'All stock levels healthy'}
+                    </p>
+                  </div>
+
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 relative overflow-hidden">
+                    <p className="text-slate-400 text-sm font-medium">Logged Transactions</p>
+                    <h3 className="text-3xl font-bold mt-2 text-blue-400">{transactions.length}</h3>
+                    <p className="text-slate-500 text-xs mt-2">Updates logged in active shared history</p>
+                  </div>
+                </div>
+
+                {/* Main Dashboard Distribution Content */}
+                <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+                  
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 lg:col-span-2">
+                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                      <SVGIcon name="trending-up" className="w-5 h-5 text-amber-500" /> Material Distribution
+                    </h3>
+                    <div className="space-y-4">
+                      {CATEGORIES.slice(1).map(category => {
+                        const count = stats.categoryCounts[category] || 0;
+                        const maxCount = Math.max(...Object.values(stats.categoryCounts), 1);
+                        const percentage = Math.min((count / maxCount) * 100, 100);
+                        
+                        return (
+                          <div key={category} className="space-y-1.5">
+                            <div className="flex justify-between text-sm">
+                              <span className="text-slate-300 font-medium flex items-center gap-2">
+                                {category === 'Solar Panels' ? <SVGIcon name="sun" className="w-4 h-4 text-amber-500" /> :
+                                 category === 'Batteries' ? <SVGIcon name="battery" className="w-4 h-4 text-emerald-500" /> :
+                                 category === 'Inverters' ? <SVGIcon name="zap" className="w-4 h-4 text-indigo-400" /> :
+                                 category === 'Cabling & Wires' ? <SVGIcon name="cable" className="w-4 h-4 text-blue-500" /> :
+                                 <SVGIcon name="package" className="w-4 h-4 text-slate-500" />}
+                                {category}
+                              </span>
+                              <span className="text-slate-400 font-semibold">{count} units</span>
+                            </div>
+                            <div className="w-full bg-slate-800 rounded-full h-3 overflow-hidden">
+                              <div 
+                                className="bg-amber-500 h-full rounded-full transition-all duration-500" 
+                                style={{ width: `${percentage}%` }}
+                              ></div>
+                            </div>
+                          </div>
+                        );
+                      })}
+                    </div>
+                  </div>
+
+                  {/* Re-order watchlist */}
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                    <h3 className="text-lg font-semibold text-white mb-4 flex items-center gap-2">
+                      <SVGIcon name="alert-triangle" className="w-5 h-5 text-red-400" /> Re-Order Watchlist
+                    </h3>
+                    
+                    {stats.lowStockCount === 0 ? (
+                      <div className="h-48 flex flex-col items-center justify-center text-center text-slate-500 border border-dashed border-slate-800 rounded-xl">
+                        <SVGIcon name="check-circle" className="w-10 h-10 text-emerald-500/50 mb-2" />
+                        <p className="text-sm">Storage levels optimal</p>
+                      </div>
+                    ) : (
+                      <div className="space-y-3 max-h-[300px] overflow-y-auto pr-1">
+                        {inventory
+                          .filter(item => item.quantity <= item.minThreshold)
+                          .map(item => (
+                            <div key={item.id} className="p-3 bg-red-950/25 border border-red-900/50 rounded-xl flex items-center justify-between gap-3">
+                              <div className="min-w-0 flex-1">
+                                <p className="font-bold text-sm text-red-200 truncate">{item.brand} - {item.name}</p>
+                                <p className="text-xs text-red-400/80 mt-0.5">SKU: {item.sku} • Loc: {item.location}</p>
+                              </div>
+                              <div className="text-right shrink-0">
+                                <p className="text-sm font-bold text-red-400">{item.quantity} / {item.minThreshold}</p>
+                                <p className="text-[10px] text-red-300 uppercase font-semibold">Stock Low</p>
+                              </div>
+                            </div>
+                          ))}
+                      </div>
+                    )}
+                  </div>
+
+                </div>
+
+                {/* Operations feed */}
+                <div className="bg-slate-900 border border-slate-800 rounded-xl p-5">
+                  <div className="flex items-center justify-between mb-4">
+                    <h3 className="text-lg font-semibold text-white flex items-center gap-2">
+                      <SVGIcon name="activity" className="w-5 h-5 text-indigo-400" /> Real-time Collaborative Log Feed
+                    </h3>
+                    <button onClick={() => setActiveTab('history')} className="text-xs text-amber-400 hover:underline font-medium">
+                      View complete history
+                    </button>
+                  </div>
+                  
+                  <div className="divide-y divide-slate-800 max-h-[250px] overflow-y-auto pr-2">
+                    {transactions.slice(0, 10).map((tx) => {
+                      const correlatedItem = inventory.find(i => i.sku === tx.sku);
+                      return (
+                        <div key={tx.id} className="py-3 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/40 last:border-0">
+                          <div className="flex items-start gap-3">
+                            <div className={`p-1.5 rounded mt-0.5 ${tx.type === 'IN' ? 'bg-emerald-950/50 text-emerald-400 border border-emerald-900/50' : 'bg-red-950/50 text-red-400 border border-red-900/50'}`}>
+                              <SVGIcon name={tx.type === 'IN' ? 'arrow-down-left' : 'arrow-up-right'} className="w-4 h-4" />
+                            </div>
+                            <div>
+                              <p className="text-sm font-semibold text-slate-200">
+                                {correlatedItem ? `${correlatedItem.brand} - ${correlatedItem.name}` : tx.sku}
+                              </p>
+                              <p className="text-xs text-slate-400 mt-0.5">
+                                <span className="font-medium text-amber-400">{tx.type === 'IN' ? 'Restocked' : 'Issued'}</span> {tx.quantity} units — {tx.note}
+                              </p>
+                            </div>
+                          </div>
+                          <span className="text-xs text-slate-500 text-right shrink-0">{tx.date}</span>
+                        </div>
+                      );
+                    })}
+                  </div>
+                </div>
+
+              </div>
+            )}
+
+            {/* --- INVENTORY LIST VIEW --- */}
+            {activeTab === 'inventory' && (
+              <div className="space-y-6">
+                
+                {/* Control bar */}
+                <div className="bg-slate-900 border border-slate-800 p-4 rounded-xl flex flex-col md:flex-row gap-4 items-center justify-between shadow-md">
+                  <div className="flex gap-1.5 overflow-x-auto w-full md:w-auto pb-2 md:pb-0 scrollbar-hide">
+                    {CATEGORIES.map(cat => (
+                      <button
+                        key={cat}
+                        onClick={() => setSelectedCategory(cat)}
+                        className={`px-3 py-1.5 rounded-lg text-xs font-semibold whitespace-nowrap transition-all ${selectedCategory === cat ? 'bg-amber-500 text-slate-950' : 'bg-slate-800 text-slate-300 hover:bg-slate-700'}`}
+                      >
+                        {cat}
+                      </button>
+                    ))}
+                  </div>
+
+                  <div className="flex gap-2 w-full md:w-auto items-center">
+                    <select
+                      value={selectedBrandFilter}
+                      onChange={(e) => setSelectedBrandFilter(e.target.value)}
+                      className="bg-slate-950 border border-slate-800 text-slate-300 rounded-lg px-3 py-2 text-xs focus:outline-none focus:border-amber-500"
+                    >
+                      <option value="All">All Brands</option>
+                      {PARTNER_BRANDS.map(brand => (
+                        <option key={brand} value={brand}>{brand}</option>
+                      ))}
+                    </select>
+
+                    <div className="relative w-full md:w-60">
+                      <SVGIcon name="search" className="w-4 h-4 absolute left-3 top-1/2 -translate-y-1/2 text-slate-500" />
+                      <input 
+                        type="text"
+                        placeholder="Search materials, SKU, brand..."
+                        value={searchQuery}
+                        onChange={(e) => setSearchQuery(e.target.value)}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg pl-9 pr-4 py-2 text-sm text-slate-200 placeholder-slate-500 focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+                  </div>
+                </div>
+
+                {/* Table */}
+                {filteredInventory.length === 0 ? (
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl p-12 text-center text-slate-500">
+                    <SVGIcon name="package" className="w-12 h-12 mx-auto text-slate-600 mb-3" />
+                    <p className="text-lg font-medium text-slate-400">No matching items found</p>
+                  </div>
+                ) : (
+                  <div className="bg-slate-900 border border-slate-800 rounded-xl overflow-x-auto shadow-lg">
+                    <table className="w-full text-left border-collapse">
+                      <thead>
+                        <tr className="bg-slate-950 text-slate-400 text-xs uppercase font-bold tracking-wider border-b border-slate-800">
+                          <th className="py-4 px-5">Brand & Component Details</th>
+                          <th className="py-4 px-5">SKU</th>
+                          <th className="py-4 px-5">Category</th>
+                          <th className="py-4 px-5 text-center">In-Stock Quantity</th>
+                          <th className="py-4 px-5">Location</th>
+                          <th className="py-4 px-5">Unit Rate (PHP)</th>
+                          <th className="py-4 px-5 text-right">Actions</th>
+                        </tr>
+                      </thead>
+                      <tbody className="divide-y divide-slate-800 text-sm">
+                        {filteredInventory.map(item => {
+                          const isLow = item.quantity <= item.minThreshold;
+                          return (
+                            <tr key={item.id} className="hover:bg-slate-800/40 transition-colors">
+                              <td className="py-4 px-5">
+                                <div>
+                                  <span className="text-[10px] text-slate-500 block uppercase font-bold tracking-wider">{item.brand}</span>
+                                  <p className="font-semibold text-slate-100">{item.name}</p>
+                                  {isLow && (
+                                    <span className="inline-flex items-center gap-1 mt-1 text-[10px] bg-red-950/60 text-red-400 font-bold border border-red-900/50 px-2 py-0.5 rounded-full uppercase">
+                                      <SVGIcon name="alert-triangle" className="w-3 h-3" /> Re-Order Needed
+                                    </span>
+                                  )}
+                                </div>
+                              </td>
+                              <td className="py-4 px-5 font-mono text-xs text-slate-300">{item.sku}</td>
+                              <td className="py-4 px-5 text-slate-400">{item.category}</td>
+                              <td className="py-4 px-5 text-center">
+                                <span className={`text-base font-bold ${isLow ? 'text-red-400' : 'text-slate-100'}`}>
+                                  {item.quantity} <span className="text-xs text-slate-400 font-normal">{item.unit}</span>
+                                </span>
+                              </td>
+                              <td className="py-4 px-5 text-slate-300 text-xs font-medium">{item.location}</td>
+                              <td className="py-4 px-5 text-slate-300 font-bold">₱{item.price.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                              <td className="py-4 px-5 text-right">
+                                <div className="flex items-center justify-end gap-2">
+                                  <button 
+                                    onClick={() => {
+                                      setSelectedItemForTx(item);
+                                      setTxType('IN');
+                                      setShowTransactionModal(true);
+                                    }}
+                                    className="p-1.5 hover:bg-emerald-950/50 text-emerald-400 rounded border border-emerald-900/30 transition-colors"
+                                  >
+                                    <SVGIcon name="plus" className="w-4 h-4" />
+                                  </button>
+                                  <button 
+                                    onClick={() => {
+                                      setSelectedItemForTx(item);
+                                      setTxType('OUT');
+                                      setShowTransactionModal(true);
+                                    }}
+                                    className="p-1.5 hover:bg-red-950/50 text-red-400 rounded border border-red-900/30 transition-colors"
+                                  >
+                                    <SVGIcon name="minus" className="w-4 h-4" />
+                                  </button>
+                                  <button 
+                                    onClick={() => handleDeleteItem(item.id, item.name)}
+                                    className="p-1.5 hover:bg-slate-800 text-slate-400 hover:text-red-400 rounded transition-colors"
+                                  >
+                                    <SVGIcon name="trash" className="w-4 h-4" />
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          );
+                        })}
+                      </tbody>
+                    </table>
+                  </div>
+                )}
+
+                <div className="flex justify-between items-center bg-slate-900 border border-slate-800 p-4 rounded-xl">
+                  <span className="text-xs text-slate-400">Database Tools</span>
+                  <button 
+                    onClick={handleResetData}
+                    className="text-xs text-red-400 hover:text-red-300 transition-colors flex items-center gap-1 bg-red-950/30 border border-red-900/40 px-3 py-1.5 rounded-lg font-medium cursor-pointer"
+                  >
+                    Reset Database to defaults
+                  </button>
+                </div>
+
+              </div>
+            )}
+
+            {/* --- PROMO KIT BUILDER VIEW --- */}
+            {activeTab === 'kits' && (
+              <div className="space-y-6">
+                <div className="bg-slate-900 border border-slate-800 p-5 rounded-xl flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
+                  <div>
+                    <h2 className="text-xl font-bold text-white flex items-center gap-2">
+                      <SVGIcon name="award" className="w-6 h-6 text-amber-500 animate-pulse" /> Official Hybrid Solar Packages
+                    </h2>
+                    <p className="text-sm text-slate-400 mt-1">
+                      Cross-checks warehouse capacity for all {STANDARD_KITS.length} Hybrid promotional packages featured on marketing materials.
+                    </p>
+                  </div>
+                  <div className="bg-amber-500/10 border border-amber-500/30 rounded-lg p-3 text-xs text-amber-300 max-w-sm">
+                    <span className="font-bold flex items-center gap-1"><SVGIcon name="flame" className="w-4 h-4" /> Promotion Details:</span>
+                    Each package automatically pre-allocates corresponding bi-facial panels, matching hybrid inverter sizing, LFP storage, cabling rolls, and brackets.
+                  </div>
+                </div>
+
+                <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+                  {STANDARD_KITS.map(kit => {
+                    const checkedItems = checkKitAvailability(kit);
+                    const canDeploy = checkedItems.every(c => c.hasSufficient);
+                    
+                    return (
+                      <div key={kit.id} className="bg-slate-900 border border-slate-800 rounded-xl p-5 flex flex-col justify-between hover:border-slate-700 transition-all relative overflow-hidden">
+                        {/* Limited Offer label */}
+                        <div className="absolute top-0 right-0 bg-[#e0a32e] text-slate-950 font-logo font-bold text-[9px] px-3 py-1 uppercase tracking-wider rounded-bl-lg shadow-md">
+                          LIMITED OFFER
+                        </div>
+
+                        <div>
+                          <div className="mb-3">
+                            <span className="text-[10px] uppercase font-bold text-slate-500 tracking-wider">Bright Horizon Package</span>
+                            <h3 className="text-xl font-black text-white font-logo mt-0.5">{kit.name}</h3>
+                          </div>
+
+                          {/* Promotional Pricing Box */}
+                          <div className="bg-slate-950/70 border border-slate-800 p-3.5 rounded-lg mb-4 flex flex-col sm:flex-row justify-between sm:items-center gap-3">
+                            <div>
+                              <p className="text-[10px] text-slate-500 font-bold uppercase tracking-wider">Promotional Deal Price</p>
+                              <div className="flex items-baseline gap-2 mt-1">
+                                <span className="text-2xl font-extrabold text-red-500">₱{kit.promoPrice.toLocaleString()}</span>
+                                <span className="text-xs text-slate-500 line-through">₱{kit.originalPrice.toLocaleString()}</span>
+                              </div>
+                            </div>
+                            <div className="text-xs space-y-1 sm:text-right border-t sm:border-t-0 border-slate-800 pt-2 sm:pt-0">
+                              <p className="text-emerald-400 font-bold">✓ potential savings: {kit.savings}</p>
+                              <p className="text-slate-400">Monthly bill: <strong className="text-slate-200">{kit.electricBillRange}</strong></p>
+                            </div>
+                          </div>
+
+                          <div className="space-y-1.5 mb-4">
+                            <p className="text-xs font-semibold text-slate-400 flex items-center gap-1">
+                              <SVGIcon name="info" className="w-3.5 h-3.5 text-amber-500" /> Package Inclusions:
+                            </p>
+                            <p className="text-xs text-slate-300 italic pl-1">{kit.inclusions}</p>
+                          </div>
+                          
+                          <div className="space-y-2 border-t border-slate-800/60 pt-3 mb-4">
+                            <p className="text-[10px] font-bold text-slate-500 uppercase tracking-wider">Live Warehouse Material Check:</p>
+                            {checkedItems.map((kItem, index) => (
+                              <div key={index} className="flex justify-between items-center text-xs">
+                                <span className="text-slate-300 truncate max-w-[220px]" title={kItem.itemName}>
+                                  {kItem.itemName}
+                                </span>
+                                <span className={`font-mono text-[11px] px-2 py-0.5 rounded ${kItem.hasSufficient ? 'text-slate-300 bg-slate-950' : 'text-red-400 bg-red-950/40 font-bold border border-red-900/20'}`}>
+                                  Need {kItem.quantity} (Available: {kItem.available})
+                                </span>
+                              </div>
+                            ))}
+                          </div>
+                        </div>
+
+                        <button
+                          onClick={() => handleDeployKit(kit)}
+                          disabled={!canDeploy}
+                          className={`w-full py-2.5 rounded-lg text-xs font-bold flex items-center justify-center gap-2 cursor-pointer transition-colors ${canDeploy ? 'bg-amber-500 hover:bg-amber-600 text-slate-950' : 'bg-slate-800 text-slate-500 cursor-not-allowed'}`}
+                        >
+                          <SVGIcon name="check-circle" className="w-4 h-4" />
+                          {canDeploy ? 'Deploy Flyer Package to Site (Bulk Deduct)' : 'Cannot Deploy (Restock Required)'}
+                        </button>
+                      </div>
+                    );
+                  })}
+                </div>
+              </div>
+            )}
+
+            {/* --- ACTIVITY LOG VIEW --- */}
+            {activeTab === 'history' && (
+              <div className="bg-slate-900 border border-slate-800 rounded-xl p-5 space-y-4">
+                <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4">
+                  <div>
+                    <h2 className="text-lg font-semibold text-white">Consolidated Activity Logging</h2>
+                    <p className="text-xs text-slate-400">All inbound shipments and onsite installation dispatches synchronized live across users</p>
+                  </div>
+                </div>
+
+                {transactions.length === 0 ? (
+                  <div className="text-center py-12 text-slate-500 border border-dashed border-slate-800 rounded-xl">
+                    <SVGIcon name="file-text" className="w-12 h-12 mx-auto text-slate-700 mb-2" />
+                    <p className="text-sm">No recorded transactions yet.</p>
+                  </div>
+                ) : (
+                  <div className="divide-y divide-slate-800">
+                    {transactions.map((tx) => {
+                      const correlatedItem = inventory.find(i => i.sku === tx.sku);
+                      return (
+                        <div key={tx.id} className="py-3.5 flex flex-col sm:flex-row sm:items-center justify-between gap-2 border-b border-slate-800/20 last:border-0">
+                          <div className="flex items-start gap-3">
+                            <div className={`p-2 rounded mt-0.5 ${tx.type === 'IN' ? 'bg-emerald-950/50 text-emerald-400 border border-emerald-900/50' : 'bg-red-950/50 text-red-400 border border-red-900/50'}`}>
+                              {tx.type === 'IN' ? (
+                                <span className="flex items-center gap-1 text-xs font-bold"><SVGIcon name="arrow-down-left" className="w-4 h-4" /> IN</span>
+                              ) : (
+                                <span className="flex items-center gap-1 text-xs font-bold"><SVGIcon name="arrow-up-right" className="w-4 h-4" /> OUT</span>
+                              )}
+                            </div>
+                            <div>
+                              <p className="font-semibold text-slate-200">
+                                {correlatedItem ? `${correlatedItem.brand} - ${correlatedItem.name}` : tx.sku}
+                              </p>
+                              <div className="flex flex-wrap items-center gap-2 text-xs text-slate-400 mt-1">
+                                <span className="font-mono bg-slate-800 px-1.5 py-0.5 rounded text-[10px] text-slate-300">{tx.sku}</span>
+                                <span>•</span>
+                                <span className="text-slate-300">Quantity: <strong className="text-white">{tx.quantity}</strong></span>
+                                <span>•</span>
+                                <span className="italic font-light">Note: "{tx.note}"</span>
+                              </div>
+                            </div>
+                          </div>
+                          <div className="text-right shrink-0">
+                            <p className="text-xs text-slate-500">{tx.date}</p>
+                          </div>
+                        </div>
+                      );
+                    })}
+                  </div>
+                )}
+              </div>
+            )}
+
+          </main>
+
+          {/* --- DIALOG MODALS --- */}
+
+          {/* 1. Add Component Catalog modal */}
+          {showAddModal && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-fade-in">
+              <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-lg w-full overflow-hidden shadow-2xl">
+                <div className="bg-slate-950 px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+                  <h3 className="font-bold text-white text-lg flex items-center gap-2">
+                    <SVGIcon name="plus" className="w-5 h-5 text-amber-500" /> Catalog New Component
+                  </h3>
+                  <button onClick={() => setShowAddModal(false)} className="text-slate-400 hover:text-white cursor-pointer">
+                    <SVGIcon name="x" className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <form onSubmit={handleAddNewItem} className="p-6 space-y-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <div className="sm:col-span-2 space-y-1">
+                      <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider font-logo">Item/Product Name *</label>
+                      <input 
+                        type="text"
+                        required
+                        placeholder="e.g. Dyness 5.12kWh LFP Battery Module"
+                        value={newItem.name}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, name: e.target.value }))}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider font-logo">SKU Code (Unique) *</label>
+                      <input 
+                        type="text"
+                        required
+                        placeholder="e.g. BAT-DYNESS-LFP"
+                        value={newItem.sku}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, sku: e.target.value }))}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider font-logo">Manufacturer Brand *</label>
+                      <select
+                        value={newItem.brand}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, brand: e.target.value }))}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500"
+                      >
+                        {PARTNER_BRANDS.map(brand => (
+                          <option key={brand} value={brand}>{brand}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider font-logo">Category *</label>
+                      <select
+                        value={newItem.category}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, category: e.target.value }))}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500"
+                      >
+                        {CATEGORIES.slice(1).map(cat => (
+                          <option key={cat} value={cat}>{cat}</option>
+                        ))}
+                      </select>
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider font-logo">Starting Stock Qty *</label>
+                      <input 
+                        type="number"
+                        required
+                        min="0"
+                        placeholder="e.g. 50"
+                        value={newItem.quantity}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, quantity: e.target.value }))}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider font-logo">Min Threshold Warning *</label>
+                      <input 
+                        type="number"
+                        required
+                        min="1"
+                        placeholder="e.g. 10"
+                        value={newItem.minThreshold}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, minThreshold: e.target.value }))}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider font-logo">Unit of Measure</label>
+                      <input 
+                        type="text"
+                        placeholder="e.g. pcs, rolls, sets"
+                        value={newItem.unit}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, unit: e.target.value }))}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+
+                    <div className="space-y-1">
+                      <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider font-logo">Unit Cost (₱ PHP) *</label>
+                      <input 
+                        type="number"
+                        step="1"
+                        required
+                        placeholder="e.g. 78000"
+                        value={newItem.price}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, price: e.target.value }))}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+
+                    <div className="sm:col-span-2 space-y-1">
+                      <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider font-logo">Warehouse Location / Shelf Bin</label>
+                      <input 
+                        type="text"
+                        placeholder="e.g. Aisle A-1, Bin B-10"
+                        value={newItem.location}
+                        onChange={(e) => setNewItem(prev => ({ ...prev, location: e.target.value }))}
+                        className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 focus:outline-none focus:border-amber-500"
+                      />
+                    </div>
+                  </div>
+
+                  <div className="flex gap-3 justify-end pt-4 border-t border-slate-800">
+                    <button 
+                      type="button" 
+                      onClick={() => setShowAddModal(false)}
+                      className="px-4 py-2 text-sm font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer animate-fade-in"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="submit"
+                      className="bg-amber-500 hover:bg-amber-600 text-slate-950 px-5 py-2 rounded-lg text-sm font-bold transition-colors cursor-pointer"
+                    >
+                      Register Component
+                    </button>
+                  </div>
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* 3. Adjust Stock Level entry modal */}
+          {showTransactionModal && selectedItemForTx && (
+            <div className="fixed inset-0 z-50 flex items-center justify-center p-4 bg-slate-950/85 backdrop-blur-sm animate-fade-in">
+              <div className="bg-slate-900 border border-slate-800 rounded-xl max-w-md w-full overflow-hidden shadow-2xl">
+                <div className="bg-slate-950 px-6 py-4 border-b border-slate-800 flex items-center justify-between">
+                  <h3 className="font-bold text-white text-base">
+                    Stock Adjustment: {selectedItemForTx.sku}
+                  </h3>
+                  <button onClick={() => setShowTransactionModal(false)} className="text-slate-400 hover:text-white cursor-pointer">
+                    <SVGIcon name="x" className="w-5 h-5" />
+                  </button>
+                </div>
+
+                <div className="p-4 bg-slate-850 text-slate-300 text-xs flex justify-between border-b border-slate-800">
+                  <span>Item: <strong className="text-white">{selectedItemForTx.name}</strong></span>
+                  <span>Available: <strong className="text-amber-400">{selectedItemForTx.quantity} {selectedItemForTx.unit}</strong></span>
+                </div>
+
+                <form onSubmit={handleTransactionSubmit} className="p-6 space-y-4">
+                  
+                  {/* Type toggle */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider block mb-2 font-logo">Direction of Inventory Flow</label>
+                    <div className="grid grid-cols-2 gap-2">
+                      <button
+                        type="button"
+                        onClick={() => setTxType('IN')}
+                        className={`py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 border transition-all ${txType === 'IN' ? 'bg-emerald-950/80 border-emerald-500 text-emerald-400' : 'bg-slate-950 border-slate-800 text-slate-400'}`}
+                      >
+                        <SVGIcon name="arrow-down-left" className="w-4 h-4" /> Stock Intake (Add)
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => setTxType('OUT')}
+                        className={`py-2 rounded-lg text-xs font-bold flex items-center justify-center gap-2 border transition-all ${txType === 'OUT' ? 'bg-red-950/80 border-red-500 text-red-400' : 'bg-slate-950 border-slate-800 text-slate-400'}`}
+                      >
+                        <SVGIcon name="arrow-up-right" className="w-4 h-4" /> Issue/Deduct (Out)
+                      </button>
+                    </div>
+                  </div>
+
+                  {/* Quantity input */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider font-logo">Adjustment Quantity ({selectedItemForTx.unit})</label>
+                    <input 
+                      type="number"
+                      required
+                      min="1"
+                      placeholder="e.g. 10"
+                      value={txQuantity}
+                      onChange={(e) => setTxQuantity(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  {/* Note input */}
+                  <div className="space-y-1">
+                    <label className="text-xs font-semibold text-slate-400 uppercase tracking-wider font-logo">Activity Description / Project Allocation</label>
+                    <input 
+                      type="text"
+                      placeholder="e.g. Quezon City residential install"
+                      value={txNote}
+                      onChange={(e) => setTxNote(e.target.value)}
+                      className="w-full bg-slate-950 border border-slate-800 rounded-lg px-3 py-2 text-sm text-slate-200 placeholder-slate-600 focus:outline-none focus:border-amber-500"
+                    />
+                  </div>
+
+                  <div className="flex gap-3 justify-end pt-4 border-t border-slate-800">
+                    <button 
+                      type="button" 
+                      onClick={() => setShowTransactionModal(false)}
+                      className="px-4 py-2 text-sm font-semibold text-slate-400 hover:text-white transition-colors cursor-pointer"
+                    >
+                      Cancel
+                    </button>
+                    <button 
+                      type="submit"
+                      className={`px-5 py-2 rounded-lg text-sm font-bold transition-all text-slate-950 cursor-pointer ${txType === 'IN' ? 'bg-emerald-500 hover:bg-emerald-600' : 'bg-red-500 hover:bg-red-600'}`}
+                    >
+                      {txType === 'IN' ? 'Increase Stock Level' : 'Deduct Stock Level'}
+                    </button>
+                  </div>
+
+                </form>
+              </div>
+            </div>
+          )}
+
+          {/* Footer Branding */}
+          <footer className="border-t border-slate-800 bg-slate-950/80 text-slate-500 py-6 text-center text-xs space-y-2 mt-auto">
+            <p>© 2026 Bright Horizon & JPMC Solartech. All Rights Reserved.</p>
+            <p className="text-[11px] text-slate-600">Enterprise Logistics Storage Module • Live Collaborative Connected Mode</p>
+          </footer>
+        </div>
+      );
+    }
+
+    const root = ReactDOM.createRoot(document.getElementById('root'));
+    root.render(<App />);
+  </script>
+</body>
+</html>
